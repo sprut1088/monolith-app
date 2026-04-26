@@ -1,0 +1,150 @@
+pipeline:
+  name: MonolithDeployment
+  identifier: MonolithDeployment
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Deploy
+        identifier: Deploy
+        description: Deploy Flask monolith to local development environment
+        type: Deployment
+        spec:
+          deploymentType: Deployment
+          service:
+            serviceRef: MonolithApp
+            serviceInputs: {}
+          environment:
+            environmentRef: LocalDev
+            deployToAll: false
+            environmentInputs: {}
+            serviceOverrides: {}
+            infrastructure:
+              infrastructureKey: LocalMachine
+          execution:
+            steps:
+              - step:
+                  type: JenkinsJobExecution
+                  name: Trigger Jenkins Build
+                  identifier: TriggerJenkinsBuild
+                  spec:
+                    connectorRef: LocalJenkins
+                    jobName: MonolithBuild
+                    jobParameters: {}
+                    downstreamSteps: true
+                  timeout: 10m
+                  
+              - step:
+                  type: ShellScript
+                  name: Stop Old Server
+                  identifier: StopOldServer
+                  spec:
+                    shell: Powershell
+                    onDelegate: true
+                    source:
+                      type: Inline
+                      spec:
+                        script: |
+                          powershell -ExecutionPolicy Bypass -File "C:\monolith-app\stop_server.ps1" -AppPath "C:\monolith-app"
+                  timeout: 5m
+                  
+              - step:
+                  type: FetchFilesFromJenkins
+                  name: Fetch Artifact from Jenkins
+                  identifier: FetchArtifact
+                  spec:
+                    connectorRef: LocalJenkins
+                    jobName: MonolithBuild
+                    artifacts:
+                      - name: artifact
+                        path: artifacts/monolith-app.zip
+                    targetPath: C:\artifacts\
+                  timeout: 5m
+                  
+              - step:
+                  type: ShellScript
+                  name: Deploy Artifact
+                  identifier: DeployArtifact
+                  spec:
+                    shell: Powershell
+                    onDelegate: true
+                    source:
+                      type: Inline
+                      spec:
+                        script: |
+                          powershell -ExecutionPolicy Bypass -File "C:\monolith-app\deploy_artifact.ps1" `
+                            -ArtifactPath "C:\artifacts\monolith-app.zip" `
+                            -DeployPath "C:\monolith-app" `
+                            -NewVersion "v1.1.0-deployed"
+                  timeout: 5m
+                  
+              - step:
+                  type: ShellScript
+                  name: Start New Server
+                  identifier: StartNewServer
+                  spec:
+                    shell: Powershell
+                    onDelegate: true
+                    source:
+                      type: Inline
+                      spec:
+                        script: |
+                          powershell -ExecutionPolicy Bypass -File "C:\monolith-app\start_server.ps1" -AppPath "C:\monolith-app"
+                  timeout: 5m
+                  
+              - step:
+                  type: ShellScript
+                  name: Health Check
+                  identifier: HealthCheck
+                  spec:
+                    shell: Powershell
+                    onDelegate: true
+                    source:
+                      type: Inline
+                      spec:
+                        script: |
+                          $maxAttempts = 5
+                          $attempt = 0
+                          $success = $false
+                          
+                          while ($attempt -lt $maxAttempts) {
+                              try {
+                                  $response = Invoke-WebRequest -Uri "http://localhost:5000/health" `
+                                      -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+                                  if ($response.StatusCode -eq 200) {
+                                      Write-Host "✓ Deployment verified - Server is healthy"
+                                      Write-Host "Response: $($response.Content)"
+                                      $success = $true
+                                      break
+                                  }
+                              }
+                              catch {
+                                  $attempt++
+                                  Write-Host "Attempt $attempt/$maxAttempts - Waiting for server..."
+                                  Start-Sleep -Seconds 2
+                              }
+                          }
+                          
+                          if ($success) {
+                              exit 0
+                          } else {
+                              Write-Host "✗ Health check failed after $maxAttempts attempts"
+                              exit 1
+                          }
+                  timeout: 3m
+            rollbackSteps:
+              - step:
+                  type: ShellScript
+                  name: Rollback - Restart Old Server
+                  identifier: RollbackRestartServer
+                  spec:
+                    shell: Powershell
+                    onDelegate: true
+                    source:
+                      type: Inline
+                      spec:
+                        script: |
+                          powershell -ExecutionPolicy Bypass -File "C:\monolith-app\start_server.ps1" -AppPath "C:\monolith-app"
+                  timeout: 5m
+        variables: {}
