@@ -19,7 +19,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Version file - written during deployment
-VERSION_FILE = "C:\\monolith-app\\version.txt"
+VERSION_FILE = "D:\\CICD_Demo\\git_repo\\monolith-app\\version.txt"
 
 def get_version():
     """Read current deployed version from file."""

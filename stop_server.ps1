@@ -7,10 +7,10 @@
     Called by Harness deployment pipeline.
 
 .PARAMETER AppPath
-    Path to application directory (default: C:\monolith-app)
+    Path to application directory (default: D:\CICD_Demo\git_repo\monolith-app)
 
 .EXAMPLE
-    .\stop_server.ps1 -AppPath "C:\monolith-app"
+    .\stop_server.ps1 -AppPath "D:\CICD_Demo\git_repo\monolith-app"
 
 .NOTES
     - Reads PID from server.pid file
@@ -19,7 +19,7 @@
 #>
 
 param(
-    [string]$AppPath = "C:\monolith-app"
+    [string]$AppPath = "D:\CICD_Demo\git_repo\monolith-app"
 )
 
 # Color output functions
@@ -33,7 +33,7 @@ function Write-Warn {
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] $Message" -ForegroundColor Yellow
 }
 
-function Write-Error-Custom {
+function Write-ErrorCustom {
     param([string]$Message)
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] ERROR: $Message" -ForegroundColor Red
 }
@@ -56,13 +56,13 @@ try {
         $pid = [int]($pidContent.Trim())
     }
     catch {
-        Write-Error-Custom "Failed to read PID from file: $_"
+        Write-ErrorCustom "Failed to read PID from file: $_"
         exit 1
     }
     
     # Verify PID is numeric and valid
     if ($pid -le 0) {
-        Write-Error-Custom "Invalid PID read from file: $pid"
+        Write-ErrorCustom "Invalid PID read from file: $pid"
         exit 1
     }
     
@@ -99,12 +99,12 @@ try {
         Write-Warn "Server still responding on port 5000 after stop attempt"
     }
     catch {
-        Write-Info "✓ Server stopped successfully"
+        Write-Info "Server stopped successfully"
     }
     
     exit 0
 }
 catch {
-    Write-Error-Custom "Unexpected error: $_"
+    Write-ErrorCustom "Unexpected error: $_"
     exit 1
 }

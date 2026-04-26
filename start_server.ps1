@@ -7,10 +7,10 @@
     Called by Harness deployment pipeline.
 
 .PARAMETER AppPath
-    Path to application directory (default: C:\monolith-app)
+    Path to application directory (default: D:\CICD_Demo\git_repo\monolith-app)
 
 .EXAMPLE
-    .\start_server.ps1 -AppPath "C:\monolith-app"
+    .\start_server.ps1 -AppPath "D:\CICD_Demo\git_repo\monolith-app"
 
 .NOTES
     - Requires Python to be installed and in PATH
@@ -19,7 +19,7 @@
 #>
 
 param(
-    [string]$AppPath = "C:\monolith-app"
+    [string]$AppPath = "D:\CICD_Demo\git_repo\monolith-app"
 )
 
 # Color output functions
@@ -33,7 +33,7 @@ function Write-Warn {
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] $Message" -ForegroundColor Yellow
 }
 
-function Write-Error-Custom {
+function Write-ErrorCustom {
     param([string]$Message)
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] ERROR: $Message" -ForegroundColor Red
 }
@@ -43,7 +43,7 @@ try {
     
     # Verify app directory exists
     if (-Not (Test-Path $AppPath)) {
-        Write-Error-Custom "Application directory not found: $AppPath"
+        Write-ErrorCustom "Application directory not found: $AppPath"
         exit 1
     }
     
@@ -53,11 +53,21 @@ try {
     # Check if Python is available
     $pythonCheck = python --version 2>&1
     if ($LASTEXITCODE -ne 0) {
-        Write-Error-Custom "Python not found. Please install Python 3.8+"
+        Write-ErrorCustom "Python not found. Please install Python 3.8+"
         exit 1
     }
     
     Write-Info "Python version: $pythonCheck"
+    
+    # Check if venv exists and activate it
+    $venvPath = "$AppPath\venv\Scripts\Activate.ps1"
+    if (Test-Path $venvPath) {
+        Write-Info "Activating virtual environment..."
+        & $venvPath
+    }
+    else {
+        Write-Warn "Virtual environment not found at $venvPath, using system Python"
+    }
     
     # Start Flask in background
     Write-Info "Launching Flask application..."
@@ -86,7 +96,7 @@ try {
                 -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
             
             if ($response.StatusCode -eq 200) {
-                Write-Info "✓ Server is healthy and responding"
+                Write-Info "Server is healthy and responding"
                 $serverHealthy = $true
                 break
             }
@@ -101,7 +111,7 @@ try {
     }
     
     if ($serverHealthy) {
-        Write-Info "✓ Deployment verified - Server is running"
+        Write-Info "Deployment verified - Server is running"
         Write-Info "Health check URL: http://localhost:5000/health"
         Write-Info "Info URL: http://localhost:5000/info"
         exit 0
@@ -113,6 +123,6 @@ try {
     }
 }
 catch {
-    Write-Error-Custom "Failed to start server: $_"
+    Write-ErrorCustom "Failed to start server: $_"
     exit 1
 }

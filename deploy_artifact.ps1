@@ -10,14 +10,14 @@
     Full path to ZIP artifact from Jenkins (required)
 
 .PARAMETER DeployPath
-    Where to deploy the application (default: C:\monolith-app)
+    Where to deploy the application (default: D:\CICD_Demo\git_repo\monolith-app)
 
 .PARAMETER NewVersion
     Version string to write to version.txt (default: unknown)
 
 .EXAMPLE
-    .\deploy_artifact.ps1 -ArtifactPath "C:\artifacts\monolith-app.zip" `
-        -DeployPath "C:\monolith-app" -NewVersion "v1.1.0-deployed"
+    .\deploy_artifact.ps1 -ArtifactPath "D:\CICD_Demo\artifacts\monolith-app.zip" `
+        -DeployPath "D:\CICD_Demo\git_repo\monolith-app" -NewVersion "v1.1.0-deployed"
 
 .NOTES
     - Extracts artifact to deployment directory
@@ -29,7 +29,7 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$ArtifactPath,
     
-    [string]$DeployPath = "C:\monolith-app",
+    [string]$DeployPath = "D:\CICD_Demo\git_repo\monolith-app",
     
     [string]$NewVersion = "unknown"
 )
@@ -45,7 +45,7 @@ function Write-Warn {
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] $Message" -ForegroundColor Yellow
 }
 
-function Write-Error-Custom {
+function Write-ErrorCustom {
     param([string]$Message)
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] ERROR: $Message" -ForegroundColor Red
 }
@@ -58,7 +58,7 @@ try {
     
     # Validate artifact exists
     if (-Not (Test-Path $ArtifactPath)) {
-        Write-Error-Custom "Artifact file not found: $ArtifactPath"
+        Write-ErrorCustom "Artifact file not found: $ArtifactPath"
         exit 1
     }
     
@@ -86,10 +86,10 @@ try {
     Write-Info "Extracting artifact..."
     try {
         Expand-Archive -Path $ArtifactPath -DestinationPath $DeployPath -Force
-        Write-Info "✓ Artifact extracted successfully"
+        Write-Info "Artifact extracted successfully"
     }
     catch {
-        Write-Error-Custom "Failed to extract artifact: $_"
+        Write-ErrorCustom "Failed to extract artifact: $_"
         exit 1
     }
     
@@ -103,18 +103,18 @@ try {
     try {
         $versionFile = "$DeployPath\version.txt"
         Set-Content -Path $versionFile -Value $NewVersion -Encoding UTF8 -Force
-        Write-Info "✓ Version file updated: $NewVersion"
+        Write-Info "Version file updated: $NewVersion"
     }
     catch {
         Write-Warn "Failed to update version file: $_"
     }
     
-    Write-Info "✓ Deployment completed successfully"
+    Write-Info "Deployment completed successfully"
     Write-Info "Ready for server restart"
     
     exit 0
 }
 catch {
-    Write-Error-Custom "Unexpected error during deployment: $_"
+    Write-ErrorCustom "Unexpected error during deployment: $_"
     exit 1
 }
